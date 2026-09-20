@@ -9,7 +9,7 @@ Routing by MIME type:
   image/*         -> Bedrock vision (damage assessment)              [handled in claim_agent.assess_photo]
   audio/*         -> Amazon Transcribe (voice note -> text)
   video/*         -> acknowledge; sample not analyzed here
-  application/pdf -> acknowledge as a document (e.g., police report)
+  application/pdf -> Amazon Textract OCR + Bedrock field extraction  (police report / estimate / license)
   text/vcard      -> acknowledge as contact info
   other           -> graceful acknowledgement
 
@@ -25,6 +25,8 @@ import uuid
 from typing import Any
 
 import boto3
+
+import ocr as ocr_mod
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 _s3 = boto3.client("s3", region_name=REGION)
@@ -54,6 +56,41 @@ def kind_of(mime: str) -> str:
 
 def _read_s3(bucket: str, key: str) -> bytes:
     return _s3.get_object(Bucket=bucket, Key=key)["Body"].read()
+
+
+def _extract_doc_fields(ocr_digest: str) -> str:
+    """Use Bedrock to pull claim-relevant fields from OCR'd document text.
+
+    Returns a short human-readable summary of the useful fields (document type,
+    report/claim numbers, parties, dates, amounts). Best-effort; on any failure
+    returns the raw OCR digest so nothing is lost.
+    """
+    try:
+        import claim_agent  # reuse the configured Bedrock client + model + guardrail
+        prompt = (
+            "You are ClaimPilot's document reader for an auto insurance claim. "
+            "Below is OCR text from a document the customer uploaded (could be a police "
+            "report, repair estimate, insurance card, or driver's license). In 1-3 short "
+            "lines, state the document type and the claim-relevant fields you find "
+            "(e.g., report/case number, other driver or party, date/time, location, "
+            "estimated repair amount, policy/license number). Only state what's present.\n\n"
+            f"OCR:\n{ocr_digest}"
+        )
+        # NOTE: no guardrail here — this is a trusted INTERNAL extraction prompt over
+        # OCR text, not untrusted customer chat. The guardrail (applied in claim_agent.step
+        # to customer messages) otherwise misreads our "You are ClaimPilot..." instruction
+        # as a prompt-injection attempt.
+        resp = claim_agent._bedrock.converse(
+            modelId=claim_agent.MODEL_ID,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 220, "temperature": 0.2},
+        )
+        parts = resp["output"]["message"]["content"]
+        out = "".join(p.get("text", "") for p in parts).strip()
+        return out or ocr_digest[:400]
+    except Exception as exc:  # noqa: BLE001
+        print({"docFieldExtractError": str(exc)})
+        return ocr_digest[:400]
 
 
 def transcribe_audio(bucket: str, key: str, mime: str, timeout_s: int = 55) -> str:
@@ -145,9 +182,20 @@ def observe(media: dict, assess_image) -> dict:
             }
 
         if kind == "pdf":
+            ocr = ocr_mod.extract(bucket, key, mime)
+            digest = ocr_mod.summarize(ocr)
+            if digest:
+                fields = _extract_doc_fields(digest)
+                return {
+                    "kind": "pdf",
+                    "observation": (f"(customer uploaded a document; extracted via OCR: {fields}. "
+                                    "Acknowledge it, note it's attached to the claim, and use any "
+                                    "relevant details.)"),
+                    "damage_text": None,
+                }
             return {
                 "kind": "pdf",
-                "observation": "(customer sent a PDF document, possibly a police report or estimate; acknowledge receipt and note it's attached to the claim)",
+                "observation": "(customer uploaded a PDF but no text could be extracted; acknowledge and note it's attached to the claim)",
                 "damage_text": None,
             }
 

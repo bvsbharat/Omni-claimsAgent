@@ -53,6 +53,7 @@ fi
       {\"Effect\":\"Allow\",\"Action\":[\"sms-voice:SendTextMessage\",\"sms-voice:SendRcsMessage\"],\"Resource\":\"*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"social-messaging:SendWhatsAppMessage\"],\"Resource\":\"*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"transcribe:StartTranscriptionJob\",\"transcribe:GetTranscriptionJob\"],\"Resource\":\"*\"},
+      {\"Effect\":\"Allow\",\"Action\":[\"textract:AnalyzeDocument\",\"textract:StartDocumentAnalysis\",\"textract:GetDocumentAnalysis\"],\"Resource\":\"*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"ses:SendEmail\"],\"Resource\":\"*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\",\"dynamodb:PutItem\"],\"Resource\":\"arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${TABLE}\"},
       {\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::${MEDIA_BUCKET}/*\"},
@@ -64,7 +65,8 @@ echo "   waiting for role propagation..."; sleep 10
 echo "== 3. package (with Pillow for ${ARCH}) =="
 BUILD="$(mktemp -d)"
 cp "$DIR/lambda_function.py" "$DIR/claim_agent.py" "$DIR/confirmation_image.py" \
-   "$DIR/media.py" "$DIR/channels.py" "$DIR/email_tool.py" "$DIR/settlement.py" "$BUILD/"
+   "$DIR/media.py" "$DIR/channels.py" "$DIR/email_tool.py" "$DIR/settlement.py" \
+   "$DIR/ocr.py" "$BUILD/"
 echo "   fetching Pillow wheel (manylinux ${ARCH}, cp312)..."
 $PY -m pip install \
   --platform manylinux2014_aarch64 \

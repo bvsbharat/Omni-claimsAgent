@@ -17,8 +17,10 @@ workflow** over AWS Communication Developer Services. One agent brain serves
 
 1. **collecting** — The agent (Amazon Bedrock, Claude Sonnet 4.6) conversationally
    collects the four claim slots: `what`, `when`, `where`, `damage`. It understands
-   **text, photos** (Bedrock vision damage assessment), and **voice notes**
-   (Amazon Transcribe).
+   **text, photos** (Bedrock vision damage assessment), **voice notes**
+   (Amazon Transcribe), and **uploaded documents** — PDFs or images of a police
+   report / repair estimate / license are OCR'd with **Amazon Textract** and the
+   claim-relevant fields are extracted and folded into the claim.
 2. **awaiting_email** — Once all slots are filled, the agent does NOT file yet. It
    asks for the customer's email address to authorize the claim.
 3. **awaiting_code** — A **6-digit code is emailed via SES**. The customer replies
@@ -43,7 +45,8 @@ resume, and RCS vs WhatsApp sessions are tracked separately.
 | `lambda_function.py` | Phase orchestrator + SQS handler (channel-agnostic) |
 | `channels.py` | RCS + WhatsApp adapters (`parse`, `send_text`, `send_confirmation`) |
 | `claim_agent.py` | Bedrock FNOL slot-filling brain, photo vision, email/code helpers |
-| `media.py` | Image vision / audio transcription / doc handling |
+| `media.py` | Routes attachments: image vision / audio transcription / document OCR |
+| `ocr.py` | Amazon Textract OCR (sync for images, async for multi-page PDFs) → text + form fields |
 | `email_tool.py` | SES emails: confirmation code + filed confirmation (sender `uibharat@gmail.com`) |
 | `settlement.py` | Simulated settlement estimator (severity → payout) |
 | `confirmation_image.py` | Branded 2:1 confirmation thumbnail → S3 |
@@ -59,7 +62,8 @@ resume, and RCS vs WhatsApp sessions are tracked separately.
 | RCS agent | `rcs-f9a76b2b8448418fb9ae6747622beaa6` (TESTING) |
 | WhatsApp | WABA `FNOL-Claim`, sender `+1 408-462-1873` |
 | SES sender | `uibharat@gmail.com` (verified; account has production access) |
-| Bedrock | `us.anthropic.claude-sonnet-4-6` |
+| Bedrock | `us.anthropic.claude-sonnet-4-6` + Guardrail `claimpilot-guardrail` v1 |
+| Transcribe / Textract | on-demand (voice → text, document OCR) |
 
 ## Deploy
 

@@ -62,8 +62,8 @@ Nothing gets dropped. `media.py` routes by MIME type:
 |---|---|
 | Image | Amazon Bedrock vision → damage assessment + fraud signal (fills `damage`) |
 | Audio / voice note | Amazon Transcribe → transcript used as the customer's turn |
+| **PDF / document** | **Amazon Textract OCR** (text + form fields) → Bedrock extracts claim-relevant fields (police-report #, other driver, estimate amount, license/policy #) → enriches the claim |
 | Video | Acknowledged; agent asks for a clear still photo if needed |
-| PDF / document | Acknowledged (e.g., police report / estimate), attached to claim |
 | Contact (vCard) | Acknowledged (other driver / witness) |
 | Other | Graceful acknowledgment; conversation continues |
 

@@ -180,7 +180,8 @@ def assess_photo(image_bytes: bytes, fmt: str = "jpeg") -> str:
             }
         ],
         inferenceConfig={"maxTokens": 250, "temperature": 0.2},
-        **_guardrail_kwargs(),
+        # No guardrail on this trusted internal vision prompt (guardrail is applied to
+        # customer-facing conversation in _converse(), not to our own analysis prompts).
     )
     parts = resp["output"]["message"]["content"]
     return "".join(p.get("text", "") for p in parts).strip()
