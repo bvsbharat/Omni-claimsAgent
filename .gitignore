@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build artifacts
+*.zip
+tools/**/build/
+/tmp/
+
+# AWS / secrets — never commit credentials
+.env
+.env.*
+*.pem
+aws-cli/
+
+# OS
+.DS_Store
+
+# Local diagram scratch (keep the final PNG + generator + icons)
+infra/diagram/*.mmd

@@ -1,0 +1,36 @@
+{
+  "name": "claim_started",
+  "language": "en_US",
+  "category": "UTILITY",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Hi {{1}}, this is ClaimPilot from {{2}}. We've received your request to start an insurance claim. Reply START to continue and I'll guide you through it in a few quick steps.",
+      "example": {
+        "body_text": [
+          [
+            "Alex",
+            "Acme Insurance"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Reply STOP to opt out."
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Start claim"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "Talk to an agent"
+        }
+      ]
+    }
+  ]
+}
