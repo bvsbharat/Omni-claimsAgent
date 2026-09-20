@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 ICONS = os.path.join(HERE, "icons")
 
-W, H = 2100, 1320
+W, H = 2100, 1360
 BG = (247, 248, 250)
 INK = (35, 47, 62)
 MUTED = (120, 128, 138)
@@ -145,14 +145,15 @@ def main():
     d.text((XLAMBDA, 660), "TTL-backed session state", font=font(13), fill=SEC, anchor="ma")
 
     # ---------- 4) AI & processing ----------
-    group_box("ai", "4)  AI & processing", (XRIGHT - 210, 300, XRIGHT + 210, 660))
-    place("bedrock", "bedrock", XRIGHT, 415, "Amazon Bedrock", "Claude Sonnet 4.6")
-    place("transcribe", "transcribe", XRIGHT, 565, "Amazon Transcribe", "voice notes")
+    group_box("ai", "4)  AI & processing", (XRIGHT - 210, 288, XRIGHT + 210, 748))
+    place("bedrock", "bedrock", XRIGHT, 378, "Amazon Bedrock", "reason + photo vision")
+    place("transcribe", "transcribe", XRIGHT, 510, "Amazon Transcribe", "voice notes → text")
+    place("textract", "textract", XRIGHT, 642, "Amazon Textract", "PDF/doc OCR → fields")
 
     # ---------- 5) State & media ----------
-    group_box("data", "5)  State & media", (XRIGHT - 210, 720, XRIGHT + 210, 1075))
-    place("ddb", "dynamodb", XRIGHT, 830, "Amazon DynamoDB", "claims + phase (TTL)")
-    place("s3", "s3", XRIGHT, 975, "Amazon S3", "media + confirmation cards")
+    group_box("data", "5)  State & media", (XRIGHT - 210, 792, XRIGHT + 210, 1110))
+    place("ddb", "dynamodb", XRIGHT, 882, "Amazon DynamoDB", "claims + phase (TTL)")
+    place("s3", "s3", XRIGHT, 1010, "Amazon S3", "media + confirmation cards")
 
     # ---------- flow arrows ----------
     h_arrow("cust", "rcs", "1")
@@ -161,6 +162,7 @@ def main():
     h_arrow("sqs", "lambda", "4")
     h_arrow("lambda", "bedrock", "5")
     h_arrow("lambda", "transcribe")
+    h_arrow("lambda", "textract")
     h_arrow("lambda", "ddb", "6")
     h_arrow("lambda", "s3", "7")
     h_arrow("lambda", "ses", "8")
@@ -182,8 +184,8 @@ def main():
     ly = H - 120
     d.text((52, ly), "Flow", font=font(16, True), fill=INK)
     d.text((52, ly + 26),
-           "1 inbound msg / photo / voice     2 SNS event     3 SQS (→ DLQ after 3 fails)     "
-           "4 invoke agent     5 reason + vision (guardrailed)",
+           "1 inbound msg / photo / voice / document     2 SNS event     3 SQS (→ DLQ after 3 fails)     "
+           "4 invoke agent     5 reason · photo vision · voice transcribe · document OCR",
            font=font(15), fill=MUTED)
     d.text((52, ly + 50),
            "6 read/write claim state (TTL)     7 render + store confirmation card     "
