@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 ICONS = os.path.join(HERE, "icons")
 
-W, H = 1800, 1100
+W, H = 1800, 1240
 BG = (247, 248, 250)
 INK = (35, 47, 62)          # AWS "squid ink"
 MUTED = (110, 120, 130)
@@ -26,11 +26,13 @@ GROUP_FILLS = {
     "channels": (234, 242, 253),
     "ai": (243, 236, 255),
     "data": (233, 247, 239),
+    "sec": (253, 240, 240),
 }
 GROUP_STROKE = {
     "channels": (26, 86, 219),
     "ai": (122, 63, 242),
     "data": (30, 142, 78),
+    "sec": (200, 55, 55),
 }
 ARROW = (70, 80, 92)
 
@@ -145,10 +147,36 @@ def main():
     arrow("lambda", "ses", "8")
     arrow("rcs", "cust")  # reply back
 
+    # guardrail badge on the Lambda -> Bedrock path
+    gx, gy = 1105, 400
+    gi = load_icon("guardrails")
+    img.paste(gi.resize((44, 44), Image.LANCZOS), (gx, gy - 22), gi.resize((44, 44), Image.LANCZOS))
+    d.text((gx + 22, gy + 26), "Guardrail", font=font(13, True), fill=(200, 55, 55), anchor="ma")
+
+    # --- Security & governance band (across the bottom, inside the cloud) ---
+    band = (210, 1040, 1420, 1150)
+    d.rounded_rectangle(band, radius=14, fill=GROUP_FILLS["sec"], outline=GROUP_STROKE["sec"], width=2)
+    d.text((band[0] + 16, band[1] + 10), "6) Security & governance",
+           font=font(19, True), fill=GROUP_STROKE["sec"])
+    sec_items = [
+        ("guardrails", "Bedrock Guardrails", "prompt-injection + PII"),
+        ("sqs", "SQS DLQ", "poison-msg isolation"),
+        ("dynamodb", "DynamoDB TTL", "auto-expire sessions"),
+        ("iam", "Least-privilege IAM", "scoped resources"),
+        ("ses", "Email consent gate", "6-digit code to file"),
+    ]
+    sx = band[0] + 40
+    for icon, title, sub in sec_items:
+        ic = load_icon(icon).resize((48, 48), Image.LANCZOS)
+        img.paste(ic, (sx, band[1] + 46), ic)
+        d.text((sx + 60, band[1] + 48), title, font=font(15, True), fill=INK)
+        d.text((sx + 60, band[1] + 70), sub, font=font(13), fill=MUTED)
+        sx += 240
+
     # legend / step key
-    steps = ("1 inbound msg/photo/voice   2 SNS event   3 SQS   4 invoke agent   "
-             "5 reason+vision   6 state   7 render card   8 email code+record   → reply")
-    d.text((48, H - 30), steps, font=font(15), fill=MUTED)
+    steps = ("1 inbound msg/photo/voice   2 SNS event   3 SQS (→DLQ)   4 invoke agent   "
+             "5 reason+vision (guardrailed)   6 state   7 render card   8 email code+record   → reply")
+    d.text((48, H - 26), steps, font=font(15), fill=MUTED)
 
     out = os.path.join(HERE, "claimpilot-architecture.png")
     img.save(out, "PNG")
