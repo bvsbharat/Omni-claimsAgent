@@ -149,6 +149,26 @@ Expected end state: `phase=followup`, a `claim` number, and a settlement
 `s3://claimpilot-rcs-media-<account>/confirmations/<claim>.png`, and the filed
 email is sent to the address you provided.
 
+## Security & robustness
+
+Patterns adopted from the AWS reference samples
+([Chat Orchestrator](https://github.com/aws-samples/sample-chat-orchestrator-for-generative-ai-conversations),
+[GenAI Email Categorization](https://github.com/aws-samples/sample-gen-ai-email-categorization-using-ses-mail-manager)):
+
+| Control | Implementation |
+|---|---|
+| **Amazon Bedrock Guardrails** | `claimpilot-guardrail` (v1) on every `converse()` call — blocks **prompt injection** (PROMPT_ATTACK), hate/insults/sexual/misconduct, and **PII** (blocks card numbers / SSN / passwords, anonymizes bank accounts). Verified: injection → `guardrail_intervened` + safe deflection. |
+| **Consent gate before filing** | Claim is filed only after the customer confirms a **6-digit code emailed via SES** (in-channel authorization). |
+| **SQS Dead Letter Queues** | `cds-eum-events-dlq` / `cds-whatsapp-events-dlq` with `maxReceiveCount=3` — poison messages stop retrying (this is what caused an earlier infinite loop). |
+| **Non-user event filtering** | `channels.WhatsAppChannel.parse()` drops delivery/status events (returns `None`) — the AWS "channel trigger" pattern; only real inbound messages invoke the agent. |
+| **DynamoDB TTL** | Conversation/claim state auto-expires after 7 days (`ttl` attribute) — privacy + cost. |
+| **AI disclosure** | The agent discloses it is an AI on first contact (EU AI Act Article 50 style). |
+| **Least-privilege IAM** | Bedrock scoped to `foundation-model/*` + `inference-profile/*`; `bedrock:ApplyGuardrail` scoped to `guardrail/*`; S3/DynamoDB/SQS scoped to the specific resources. |
+
+Production next steps (per AWS guidance): enable **Bedrock model-invocation logging**,
+**CloudWatch alarms** on the DLQs, **Amazon Macie** on the media bucket, and
+**Amazon Comprehend** for deeper PII redaction.
+
 ## Notes
 - **Consent gate = reply-with-code** (in-channel authorization; no public endpoint).
 - **Settlement is simulated** for the demo (not a real actuarial quote).

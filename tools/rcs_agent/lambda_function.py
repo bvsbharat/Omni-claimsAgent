@@ -93,6 +93,8 @@ def _save(key: str, state: dict) -> None:
         "code_attempts": int(state.get("code_attempts", 0)),
         "settlement": state.get("settlement"),
         "updated_at": int(time.time()),
+        # DynamoDB TTL: auto-expire an inactive session after 7 days (privacy + cost).
+        "ttl": int(time.time()) + 7 * 24 * 3600,
     })
 
 

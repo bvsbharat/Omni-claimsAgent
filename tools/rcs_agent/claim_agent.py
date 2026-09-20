@@ -36,9 +36,24 @@ import boto3
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 MODEL_ID = os.environ.get("CLAIM_MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 
+# Amazon Bedrock Guardrail (prompt-injection, abuse, PII). Applied to every
+# converse() call so untrusted customer input can't jailbreak the agent or leak PII.
+GUARDRAIL_ID = os.environ.get("GUARDRAIL_ID", "")
+GUARDRAIL_VERSION = os.environ.get("GUARDRAIL_VERSION", "1")
+
 _bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 
 SLOTS = ["what", "when", "where", "damage"]
+
+
+def _guardrail_kwargs() -> dict:
+    """Return the guardrailConfig kwarg for converse() if a guardrail is set."""
+    if not GUARDRAIL_ID:
+        return {}
+    return {"guardrailConfig": {
+        "guardrailIdentifier": GUARDRAIL_ID,
+        "guardrailVersion": GUARDRAIL_VERSION,
+    }}
 
 SYSTEM_PROMPT = """\
 You are ClaimPilot, an AI assistant that helps a customer file a personal auto \
@@ -47,6 +62,11 @@ insurance First Notice of Loss (FNOL) claim over a chat channel (RCS).
 Tone: warm, calm, reassuring, concise. Chat-sized messages (1-2 short sentences).
 Ask for ONE thing at a time. Acknowledge what the customer just said before asking \
 the next question.
+
+AI DISCLOSURE: On your FIRST message of a conversation only, briefly disclose you are \
+an AI assistant (e.g., start with "I'm ClaimPilot, an AI assistant —"). This satisfies \
+AI-transparency expectations (e.g., EU AI Act Article 50). Do not repeat the disclosure \
+on later turns.
 
 You must collect these slots, in roughly this order:
 - what:   what happened (e.g., collision, rear-ended, theft, hail, vandalism)
@@ -114,6 +134,7 @@ def _converse(history: list[dict[str, str]], user_text: str, system_note: str | 
         system=[{"text": SYSTEM_PROMPT}],
         messages=messages,
         inferenceConfig={"maxTokens": 500, "temperature": 0.3},
+        **_guardrail_kwargs(),
     )
     parts = resp["output"]["message"]["content"]
     return "".join(p.get("text", "") for p in parts).strip()
@@ -159,6 +180,7 @@ def assess_photo(image_bytes: bytes, fmt: str = "jpeg") -> str:
             }
         ],
         inferenceConfig={"maxTokens": 250, "temperature": 0.2},
+        **_guardrail_kwargs(),
     )
     parts = resp["output"]["message"]["content"]
     return "".join(p.get("text", "") for p in parts).strip()

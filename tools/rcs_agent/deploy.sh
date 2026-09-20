@@ -48,7 +48,8 @@ fi
     \"Version\":\"2012-10-17\",
     \"Statement\":[
       {\"Effect\":\"Allow\",\"Action\":[\"logs:CreateLogGroup\",\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Resource\":\"*\"},
-      {\"Effect\":\"Allow\",\"Action\":[\"bedrock:InvokeModel\",\"bedrock:Converse\"],\"Resource\":\"*\"},
+      {\"Effect\":\"Allow\",\"Action\":[\"bedrock:InvokeModel\",\"bedrock:Converse\"],\"Resource\":[\"arn:aws:bedrock:*::foundation-model/*\",\"arn:aws:bedrock:*:${ACCOUNT}:inference-profile/*\"]},
+      {\"Effect\":\"Allow\",\"Action\":[\"bedrock:ApplyGuardrail\"],\"Resource\":\"arn:aws:bedrock:${REGION}:${ACCOUNT}:guardrail/*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"sms-voice:SendTextMessage\",\"sms-voice:SendRcsMessage\"],\"Resource\":\"*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"social-messaging:SendWhatsAppMessage\"],\"Resource\":\"*\"},
       {\"Effect\":\"Allow\",\"Action\":[\"transcribe:StartTranscriptionJob\",\"transcribe:GetTranscriptionJob\"],\"Resource\":\"*\"},
@@ -79,7 +80,9 @@ echo "   zip: $(du -h "$BUILD/function.zip" | cut -f1)"
 echo "== 4. Lambda =="
 ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${ROLE}"
 SES_SENDER="ClaimPilot Claims <uibharat@gmail.com>"
-ENV="Variables={CONV_TABLE=${TABLE},RCS_AGENT_ARN=${RCS_AGENT_ARN},WA_ORIGINATION_PHONE_ID=${WA_PHONE_ID},META_API_VERSION=v20.0,MEDIA_BUCKET=${MEDIA_BUCKET},CLAIM_MODEL_ID=${MODEL_ID},SES_SENDER=${SES_SENDER}}"
+GUARDRAIL_ID="aba98ba9d4o9"
+GUARDRAIL_VERSION="1"
+ENV="Variables={CONV_TABLE=${TABLE},RCS_AGENT_ARN=${RCS_AGENT_ARN},WA_ORIGINATION_PHONE_ID=${WA_PHONE_ID},META_API_VERSION=v20.0,MEDIA_BUCKET=${MEDIA_BUCKET},CLAIM_MODEL_ID=${MODEL_ID},SES_SENDER=${SES_SENDER},GUARDRAIL_ID=${GUARDRAIL_ID},GUARDRAIL_VERSION=${GUARDRAIL_VERSION}}"
 if "$AWS" lambda get-function --region "$REGION" --function-name "$FUNC" >/dev/null 2>&1; then
   "$AWS" lambda update-function-code --region "$REGION" --function-name "$FUNC" \
     --zip-file "fileb://$BUILD/function.zip" >/dev/null
